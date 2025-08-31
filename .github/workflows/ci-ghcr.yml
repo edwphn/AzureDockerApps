@@ -2,7 +2,7 @@ name: ci-ghcr-azure-deploy
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "master" ]
   workflow_dispatch:
 
 permissions:
