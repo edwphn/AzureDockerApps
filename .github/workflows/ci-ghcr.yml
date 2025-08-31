@@ -82,12 +82,26 @@ jobs:
               if [ -n "${{ secrets.GHCR_USERNAME }}" ] && [ -n "${{ secrets.GHCR_PAT }}" ]; then
                 az containerapp registry set -g "$RG" -n "$APP_NAME" --server ghcr.io --username "${{ secrets.GHCR_USERNAME }}" --password "${{ secrets.GHCR_PAT }}"
               fi
-              az containerapp update -g "$RG" -n "$APP_NAME" --image "$IMAGE" --ingress external --target-port "$PORT" --set-env-vars PORT="$PORT"
+              az containerapp update -g "$RG" -n "$APP_NAME" \
+                --image "$IMAGE" \
+                --ingress external --target-port "$PORT" \
+                --set-env-vars PORT="$PORT"
             else
               if [ -n "${{ secrets.GHCR_USERNAME }}" ] && [ -n "${{ secrets.GHCR_PAT }}" ]; then
-                az containerapp create -g "$RG" -n "$APP_NAME" --environment "$ENV_NAME" --image "$IMAGE" --registry-server ghcr.io --registry-username "${{ secrets.GHCR_USERNAME }}" --registry-password "${{ secrets.GHCR_PAT }}" --ingress external --target-port "$PORT" --cpu 0.5 --memory 1Gi --set-env-vars PORT="$PORT"
+                az containerapp create -g "$RG" -n "$APP_NAME" \
+                  --environment "$ENV_NAME" \
+                  --image "$IMAGE" \
+                  --registry-server ghcr.io --registry-username "${{ secrets.GHCR_USERNAME }}" --registry-password "${{ secrets.GHCR_PAT }}" \
+                  --ingress external --target-port "$PORT" \
+                  --cpu 0.5 --memory 1Gi \
+                  --env-vars PORT="$PORT"
               else
-                az containerapp create -g "$RG" -n "$APP_NAME" --environment "$ENV_NAME" --image "$IMAGE" --ingress external --target-port "$PORT" --cpu 0.5 --memory 1Gi --set-env-vars PORT="$PORT"
+                az containerapp create -g "$RG" -n "$APP_NAME" \
+                  --environment "$ENV_NAME" \
+                  --image "$IMAGE" \
+                  --ingress external --target-port "$PORT" \
+                  --cpu 0.5 --memory 1Gi \
+                  --env-vars PORT="$PORT"
               fi
             fi
       
