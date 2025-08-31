@@ -63,35 +63,32 @@ jobs:
         with:
           inlineScript: |
             set -euo pipefail
-            az extension add --name containerapp --upgrade -y
-            az provider register --namespace Microsoft.App --wait
-
+            az extension add -n containerapp -y
+      
             RG="${{ secrets.RG_NAME }}"
             ENV_NAME="${{ secrets.ACA_ENV }}"
             APP_NAME="${{ secrets.ACA_NAME }}"
             LOCATION="${{ vars.AZURE_LOCATION }}"
             IMAGE="${{ env.IMAGE_NAME }}:${{ github.sha }}"
-
+            PORT="${{ env.CONTAINER_PORT }}"
+      
             if [ -z "${LOCATION}" ]; then LOCATION="westeurope"; fi
-
-            if ! az containerapp env show -g "$RG" -n "$ENV_NAME" &>/dev/null; then
+      
+            if ! az containerapp env show -g "$RG" -n "$ENV_NAME" >/dev/null 2>&1; then
               az containerapp env create -g "$RG" -n "$ENV_NAME" -l "$LOCATION"
             fi
-
-            if az containerapp show -g "$RG" -n "$APP_NAME" &>/dev/null; then
-              az containerapp update \
-                -g "$RG" -n "$APP_NAME" \
-                --image "$IMAGE" \
-                --ingress external --target-port ${{ env.CONTAINER_PORT }} \
-                --set-env-vars PORT=${{ env.CONTAINER_PORT }}
+      
+            if az containerapp show -g "$RG" -n "$APP_NAME" >/dev/null 2>&1; then
+              if [ -n "${{ secrets.GHCR_USERNAME }}" ] && [ -n "${{ secrets.GHCR_PAT }}" ]; then
+                az containerapp registry set -g "$RG" -n "$APP_NAME" --server ghcr.io --username "${{ secrets.GHCR_USERNAME }}" --password "${{ secrets.GHCR_PAT }}"
+              fi
+              az containerapp update -g "$RG" -n "$APP_NAME" --image "$IMAGE" --ingress external --target-port "$PORT" --set-env-vars PORT="$PORT"
             else
-              az containerapp create \
-                -g "$RG" -n "$APP_NAME" \
-                --environment "$ENV_NAME" \
-                --image "$IMAGE" \
-                --ingress external --target-port ${{ env.CONTAINER_PORT }} \
-                --cpu 0.5 --memory 1Gi \
-                --set-env-vars PORT=${{ env.CONTAINER_PORT }}
+              if [ -n "${{ secrets.GHCR_USERNAME }}" ] && [ -n "${{ secrets.GHCR_PAT }}" ]; then
+                az containerapp create -g "$RG" -n "$APP_NAME" --environment "$ENV_NAME" --image "$IMAGE" --registry-server ghcr.io --registry-username "${{ secrets.GHCR_USERNAME }}" --registry-password "${{ secrets.GHCR_PAT }}" --ingress external --target-port "$PORT" --cpu 0.5 --memory 1Gi --set-env-vars PORT="$PORT"
+              else
+                az containerapp create -g "$RG" -n "$APP_NAME" --environment "$ENV_NAME" --image "$IMAGE" --ingress external --target-port "$PORT" --cpu 0.5 --memory 1Gi --set-env-vars PORT="$PORT"
+              fi
             fi
-
-            az containerapp revision list -g "$RG" -n "$APP_NAME" --query "[?properties.active].{name:name,image:properties.template.containers[0].image}" -o table
+      
+            az containerapp show -g "$RG" -n "$APP_NAME" --query properties.configuration.ingress.fqdn -o tsv
